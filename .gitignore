@@ -1,0 +1,5 @@
+__pycache__/
+.thumb_tmp.jpg
+*.plain.json
+agenda.json
+.DS_Store

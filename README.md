@@ -37,3 +37,4 @@ Le site se met à jour une à deux minutes après le `git push`.
 | id | Projet | Couleur |
 | --- | --- | --- |
 | `btt` | Beyond The Track | `#E8970E` |
+| `ultraride` | UltraRide | `#C4622D` |

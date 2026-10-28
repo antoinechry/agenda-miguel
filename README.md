@@ -38,3 +38,4 @@ Le site se met à jour une à deux minutes après le `git push`.
 | --- | --- | --- |
 | `btt` | Beyond The Track | `#E8970E` |
 | `ultraride` | UltraRide | `#C4622D` |
+| `sillage` | Sillage | `#E0A21B` |

@@ -224,12 +224,31 @@ function card(p){const pr=proj(p.project),many=(p.media||[]).length>1,isVid=(p.m
  <div><div class="meta"><span class="time">${esc(p.time||"")}</span><span class="tag">${esc(p.format)}</span>${p.network?`<span class="tag">${esc(p.network)}</span>`:""}<span class="ptag">${esc(pr.name)}</span></div>
  <h3>${esc(p.title)}</h3>${p.why?`<p class="why">${esc(p.why)}</p>`:""}
  ${p.caption?`<details><summary>${esc(p.captionLabel||"Légende")}</summary><div class="cap">${esc(p.caption)}</div></details>`:""}
- <div class="actions">${p.canva?`<span class="hint">Visuel dans Canva</span>`:(p.media||[]).length?`<button class="btn dl" type="button" data-dl="${esc(p.id)}">Télécharger${many?" (zip)":""}</button>`:""}
+ <div class="actions">${p.canva?`<span class="hint">Visuel dans Canva</span>`:(p.media||[]).length?`<button class="btn dl" type="button" data-dl="${esc(p.id)}">${dlLabel(p)}</button>`:""}
  ${p.caption&&!p.captionLabel?`<button class="btn" type="button" data-copy="${esc(p.id)}">Copier la légende</button>`:""}
  <label class="chk"><input type="checkbox" data-done="${esc(p.id)}" ${done[p.id]?"checked":""}> Publié</label></div></div></article>`}
 
 function loadThumbs(){const io=new IntersectionObserver(es=>es.forEach(async e=>{if(!e.isIntersecting)return;io.unobserve(e.target);const p=DATA.posts.find(x=>x.id===e.target.dataset.thumb);try{e.target.src=await mediaURL(p.thumb)}catch(err){}}),{rootMargin:"300px"});
- document.querySelectorAll("img[data-thumb]").forEach(i=>io.observe(i))}
+ document.querySelectorAll("img[data-thumb]").forEach(i=>io.observe(i));
+ if(PHOTOS){const io2=new IntersectionObserver(es=>es.forEach(e=>{if(!e.isIntersecting)return;io2.unobserve(e.target);const p=DATA.posts.find(x=>x.id===e.target.dataset.dl);prepFiles(p).catch(()=>{})}),{rootMargin:"200px"});
+  document.querySelectorAll("[data-dl]").forEach(b=>io2.observe(b))}}
+
+// ---------- visuels vers Photos (téléphone) : menu de partage avec les fichiers, au lieu d'un téléchargement vers Fichiers
+const PHOTOS=(()=>{try{return matchMedia("(pointer:coarse)").matches&&typeof navigator.share==="function"&&typeof navigator.canShare==="function"}catch(e){return false}})();
+function dlLabel(p){const n=p.media.length,vid=p.media.some(m=>m.type.startsWith("video"));
+ if(PHOTOS)return `Enregistrer dans Photos${n>1?` · ${n} images`:vid?" · vidéo":""}`;return `Télécharger${n>1?" (zip)":""}`}
+const READY=new Map();
+function prepFiles(p){return Promise.all(p.media.map(async m=>{if(READY.has(m.file))return READY.get(m.file);const b=await mediaBlob(m);const f=new File([b],m.name,{type:m.type});READY.set(m.file,f);return f}))}
+async function shareToPhotos(t,p){
+ const ready=p.media.every(m=>READY.has(m.file));
+ if(!ready){t.disabled=true;t.textContent="Préparation…";try{await prepFiles(p)}finally{t.disabled=false;t.textContent=dlLabel(p)}}
+ const files=p.media.map(m=>READY.get(m.file));
+ if(!navigator.canShare({files}))return false;
+ try{await navigator.share({files});toast(files.length>1?`${files.length} visuels envoyés`:"Visuel envoyé")}
+ catch(err){if(err&&err.name==="AbortError")return true;
+  if(err&&err.name==="NotAllowedError"&&!ready){toast("Visuels prêts : appuie encore une fois");return true}
+  return false}
+ return true}
 
 function renderMonth(){
  const base=ST.month?pd(ST.month+"-01"):new Date(new Date().getFullYear(),new Date().getMonth(),1);
@@ -251,7 +270,9 @@ document.addEventListener("click",async e=>{
  else if(t.dataset.goto){const k=t.dataset.goto;if(k<iso(monday(new Date()))){ST.past=true;LS.set("agenda.past",true)}ST.view="agenda";render();const el=document.getElementById("d-"+k);el?el.scrollIntoView({behavior:"smooth"}):toast("Rien de prévu ce jour-là")}
  else if(t.dataset.open)lbOpen(t.dataset.open);
  else if(t.dataset.copy){const p=DATA.posts.find(x=>x.id===t.dataset.copy);try{await navigator.clipboard.writeText(p.caption);toast("Légende copiée")}catch(err){const c=t.closest(".card").querySelector(".cap");c.closest("details").open=true;const r=document.createRange();r.selectNodeContents(c);getSelection().removeAllRanges();getSelection().addRange(r);toast("Texte sélectionné")}}
- else if(t.dataset.dl){const p=DATA.posts.find(x=>x.id===t.dataset.dl);const lab=t.textContent;t.disabled=true;t.textContent="Préparation…";
+ else if(t.dataset.dl){const p=DATA.posts.find(x=>x.id===t.dataset.dl);
+  if(PHOTOS){try{if(await shareToPhotos(t,p))return}catch(err){}}
+  const lab=t.textContent;t.disabled=true;t.textContent="Préparation…";
   try{let blob,name;if(p.media.length>1){const z=new JSZip();for(const m of p.media)z.file(m.name,await mediaBlob(m));blob=await z.generateAsync({type:"blob"});name=p.zipName||(p.id+".zip")}else{blob=await mediaBlob(p.media[0]);name=p.media[0].name}
    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);toast("Téléchargement lancé")}
   catch(err){toast("Téléchargement impossible")}finally{t.disabled=false;t.textContent=lab}}

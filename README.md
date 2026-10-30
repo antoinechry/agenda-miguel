@@ -28,7 +28,7 @@ python3 tools/agenda.py remove <id>
 git add -A && git commit -m "Agenda : publications Coach Miguel semaine 45" && git push
 ```
 
-Le format d'une publication est décrit en tête de `tools/agenda.py`. Identifiant conseillé : `<projet>-<date>-<sujet>`, par exemple `btt-2026-10-29-inscriptions`.
+Le format d'une publication est décrit en tête de `tools/agenda.py`. Chaque publication et chaque story peut porter un champ `music` : deux morceaux à chercher dans Instagram et un mot-clé de repli pour la bibliothèque libre de droits (comptes professionnels). Pour ajouter la musique en lot sur l'existant : `python3 tools/agenda.py music musique.json`. Identifiant conseillé : `<projet>-<date>-<sujet>`, par exemple `btt-2026-10-29-inscriptions`.
 
 Le site se met à jour une à deux minutes après le `git push`.
 

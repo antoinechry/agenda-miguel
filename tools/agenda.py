@@ -30,8 +30,12 @@ Format d'un post (JSON) — les chemins "media" pointent vers des fichiers locau
   "media": ["chemin/slide1.png", "chemin/slide2.png"],   # images, ou une vidéo .mp4
   "thumb": "chemin/vignette.jpg",                # facultatif (sinon 1re image)
   "zipName": "BB27_inscriptions.zip",            # facultatif, nom du zip de téléchargement
-  "canva": false                                 # true = visuel fait dans Canva (pas de téléchargement)
+  "canva": false,                                # true = visuel fait dans Canva (pas de téléchargement)
+  "music": {"pick": [["A Moment Apart", "ODESZA"], ["Outro", "M83"]],   # 2 morceaux à chercher dans Instagram
+            "kw": "epic cinematic"}              # mot-clé de repli (bibliothèque libre de droits)
 }
+Stories : add-story ... --music '{"pick":[["Titre","Artiste"]],"kw":"…"}'
+Musique en lot sur l'existant : python3 tools/agenda.py music musique.json
 """
 import argparse, base64, getpass, hashlib, io, json, mimetypes, os, sys
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -116,7 +120,7 @@ def cmd_add(files):
         if thumb_src: thumb = make_thumb(rel(thumb_src))
         elif p.get("media"): thumb = video_thumb(rel(p["media"][0]))
         else: thumb = None
-        post = {k: p.get(k) for k in ("id", "project", "date", "time", "network", "format", "title", "why", "caption", "captionLabel", "zipName", "canva") if p.get(k) is not None}
+        post = {k: p.get(k) for k in ("id", "project", "date", "time", "network", "format", "title", "why", "caption", "captionLabel", "zipName", "canva", "music") if p.get(k) is not None}
         post["media"], post["thumb"] = media, thumb
         d["posts"] = [x for x in d["posts"] if x["id"] != post["id"]] + [post]
         print("✓", post["date"], post.get("time", ""), post["title"])
@@ -128,7 +132,8 @@ def main():
     a = sp.add_parser("add"); a.add_argument("files", nargs="+")
     r = sp.add_parser("remove"); r.add_argument("id")
     pr = sp.add_parser("add-project"); pr.add_argument("--id", required=True); pr.add_argument("--name", required=True); pr.add_argument("--color", required=True)
-    st = sp.add_parser("add-story"); st.add_argument("--project", required=True); st.add_argument("--date", required=True); st.add_argument("--text", required=True)
+    st = sp.add_parser("add-story"); st.add_argument("--project", required=True); st.add_argument("--date", required=True); st.add_argument("--text", required=True); st.add_argument("--music", help='JSON : {"pick":[["Titre","Artiste"],...],"kw":"mot-clé"}')
+    mu = sp.add_parser("music"); mu.add_argument("file", help='JSON : {"posts":{id: music}, "stories":[{"project","date","text","music"}]} (text = début du texte)')
     o = ap.parse_args()
     if o.c == "add": cmd_add(o.files)
     elif o.c == "list":
@@ -143,7 +148,17 @@ def main():
     elif o.c == "add-project":
         d = load(); d["projects"] = [p for p in d["projects"] if p["id"] != o.id] + [{"id": o.id, "name": o.name, "color": o.color}]; save(d); print("✓ projet", o.name)
     elif o.c == "add-story":
-        d = load(); d["stories"] = [s for s in d["stories"] if not (s["project"] == o.project and s["date"] == o.date and s["text"] == o.text)] + [{"project": o.project, "date": o.date, "text": o.text}]; save(d); print("✓ story", o.date)
+        st_ = {"project": o.project, "date": o.date, "text": o.text}
+        if o.music: st_["music"] = json.loads(o.music)
+        d = load(); d["stories"] = [s for s in d["stories"] if not (s["project"] == o.project and s["date"] == o.date and s["text"] == o.text)] + [st_]; save(d); print("✓ story", o.date)
+    elif o.c == "music":
+        m = json.load(open(o.file)); d = load(); n = 0
+        for p in d["posts"]:
+            if p["id"] in m.get("posts", {}): p["music"] = m["posts"][p["id"]]; n += 1
+        for x in m.get("stories", []):
+            for s in d["stories"]:
+                if s["project"] == x["project"] and s["date"] == x["date"] and s["text"].startswith(x["text"]): s["music"] = x["music"]; n += 1
+        save(d); print(f"✓ musique ajoutée à {n} éléments")
 
 if __name__ == "__main__":
     main()

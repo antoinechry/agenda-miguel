@@ -79,6 +79,15 @@ summary::before{content:"▸ "}details[open] summary::before{content:"▾ "}
 .hint{font-size:13px;color:var(--soft);font-style:italic}
 .stories{display:flex;flex-wrap:wrap;gap:8px}
 .story{display:flex;gap:10px;align-items:center;border:1px dashed var(--line);border-radius:8px;padding:8px 12px;font-size:14px}
+.story{flex-wrap:wrap;row-gap:4px}
+.mus{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px;font-size:13px;color:var(--soft)}
+.story .mus{flex-basis:100%;margin:0 0 0 20px}
+.mus b{font:600 12px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--soft)}
+.song{all:unset;cursor:copy;border:1px solid var(--line);border-radius:999px;padding:3px 10px;color:var(--ink);background:var(--bg);font-size:13px}
+.song:hover{border-color:var(--c,var(--accent))}
+.song:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.song i{font-style:normal;color:var(--soft)}
+.kw{font-style:italic}
 .story .dot{width:10px;height:10px;border-radius:50%;background:var(--c);flex:none}
 .empty{margin-top:40px;color:var(--soft)}
 /* month */
@@ -212,17 +221,19 @@ function renderAgenda(){
    h+=`<div class="day${d===todayISO?" today":""}" id="d-${d}" data-n="${dt.getDate()}"><div class="dlabel">${DAYS[dt.getDay()]} ${dt.getDate()} ${MONTHS[dt.getMonth()]}${d===todayISO?"<em>Aujourd'hui</em>":""}</div>`;
    for(const p of posts.filter(x=>x.date===d))h+=card(p);
    const ss=stories.filter(s=>s.date===d);
-   if(ss.length)h+=`<div class="stories">${ss.map(s=>`<div class="story" style="--c:${proj(s.project).color}"><span class="dot"></span><span class="tag">Story</span>${esc(s.text)}</div>`).join("")}</div>`;
+   if(ss.length)h+=`<div class="stories">${ss.map(s=>`<div class="story" style="--c:${proj(s.project).color}"><span class="dot"></span><span class="tag">Story</span>${esc(s.text)}${music(s.music)}</div>`).join("")}</div>`;
    h+=`</div>`}
   h+=`</div></section>`}
  $("#main").innerHTML=h;loadThumbs()}
 
+function music(m){if(!m||!(m.pick||[]).length)return "";
+ return `<div class="mus"><b>♪ Musique</b>${m.pick.map(([t,a])=>`<button type="button" class="song" data-song="${esc(t+" "+a)}" title="Copier pour chercher dans Instagram">${esc(t)} <i>· ${esc(a)}</i></button>`).join("")}${m.kw?`<span class="kw">Bibliothèque libre : « ${esc(m.kw)} »</span>`:""}</div>`}
 function card(p){const pr=proj(p.project),many=(p.media||[]).length>1,isVid=(p.media||[]).some(m=>m.type.startsWith("video"));
  const tall=p.format==="story"||p.format==="reel";
  return `<article class="card${done[p.id]?" done":""}" style="--c:${pr.color}">
  <button type="button" class="tb${tall?" tall":""}" data-open="${esc(p.id)}" aria-label="Agrandir : ${esc(p.title)}">${p.thumb?`<img alt="" data-thumb="${esc(p.id)}">`:`<span class="ph"></span>`}${many?`<span class="count">${p.media.length} slides</span>`:""}${isVid?`<span class="count">▶ vidéo</span>`:""}</button>
  <div><div class="meta"><span class="time">${esc(p.time||"")}</span><span class="tag">${esc(p.format)}</span>${p.network?`<span class="tag">${esc(p.network)}</span>`:""}<span class="ptag">${esc(pr.name)}</span></div>
- <h3>${esc(p.title)}</h3>${p.why?`<p class="why">${esc(p.why)}</p>`:""}
+ <h3>${esc(p.title)}</h3>${p.why?`<p class="why">${esc(p.why)}</p>`:""}${music(p.music)}
  ${p.caption?`<details><summary>${esc(p.captionLabel||"Légende")}</summary><div class="cap">${esc(p.caption)}</div></details>`:""}
  <div class="actions">${p.canva?`<span class="hint">Visuel dans Canva</span>`:(p.media||[]).length?`<button class="btn dl" type="button" data-dl="${esc(p.id)}">${dlLabel(p)}</button>`:""}
  ${p.caption&&!p.captionLabel?`<button class="btn" type="button" data-copy="${esc(p.id)}">Copier la légende</button>`:""}
@@ -262,6 +273,7 @@ function renderMonth(){
  h+=`</div></section>`;$("#main").innerHTML=h}
 
 // ---------- interactions
+document.addEventListener("click",async e=>{const g=e.target.closest("[data-song]");if(!g)return;try{await navigator.clipboard.writeText(g.dataset.song);toast("Copié : colle-le dans la recherche musique d'Instagram")}catch(err){toast(g.dataset.song)}});
 document.addEventListener("click",async e=>{
  const t=e.target.closest("[data-proj],[data-view],[data-mon],[data-goto],[data-open],[data-dl],[data-copy]");if(!t)return;
  if(t.dataset.proj!==undefined){const id=t.dataset.proj;ST.projects=!id?[]:ST.projects.includes(id)?ST.projects.filter(x=>x!==id):[...ST.projects,id];LS.set("agenda.proj",ST.projects);render()}

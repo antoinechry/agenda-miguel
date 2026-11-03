@@ -142,6 +142,7 @@ summary::before{content:"▸ "}details[open] summary::before{content:"▾ "}
       <div><h1>Agenda des publications</h1><p class="sub" id="subtitle"></p></div>
       <div class="bar">
         <div class="seg" role="group" aria-label="Vue"><button type="button" data-view="agenda" aria-pressed="true">Agenda</button><button type="button" data-view="mois" aria-pressed="false">Mois</button></div>
+        <button class="btn" type="button" id="icsbtn" title="Fichier .ics avec une alerte 1 h avant chaque publication (9 h le jour des stories)">Exporter avec alertes (.ics)</button>
         <button class="btn" type="button" id="csvbtn" title="Exporter les publications et stories affichées (filtre projet) au format CSV, importable dans Google Agenda">Exporter en CSV</button>
         <button class="btn" type="button" id="lockbtn">Verrouiller</button>
       </div>
@@ -189,6 +190,7 @@ $("#lockform").addEventListener("submit",async e=>{e.preventDefault();$("#err").
  finally{$("#unlock").disabled=false;$("#unlock").textContent="Ouvrir l'agenda"}});
 $("#lockbtn").addEventListener("click",()=>{LS.del("agenda.key");location.reload()});
 // ---------- export CSV (format d'import Google Agenda ; s'ouvre aussi dans Excel / Numbers)
+const AGENDA_URL="https://antoinechry.github.io/agenda-miguel/";
 function exportCSV(){
  const q=v=>{const s=String(v??"");return /[",\n;]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
  const us=s=>{const [y,m,d]=s.split("-");return `${m}/${d}/${y}`};
@@ -199,12 +201,12 @@ function exportCSV(){
  for(const p of DATA.posts.filter(visible)){
   const pr=proj(p.project).name,fmt=p.format||"post",net=p.network||"";
   const subj=`[${pr}] ${fmt.charAt(0).toUpperCase()+fmt.slice(1)}${net?" "+net:""} — ${p.title}`;
-  const desc=[p.why,mus(p.music),p.caption?(p.captionLabel||"Légende")+" :\n"+p.caption:""].filter(Boolean).join("\n\n");
+  const desc=[p.why,mus(p.music),p.caption?(p.captionLabel||"Légende")+" :\n"+p.caption:"","Agenda : "+AGENDA_URL].filter(Boolean).join("\n\n");
   const st=done[p.id]?"Publié":"À publier";
   if(p.time){const [ed,et]=plus(p.date,p.time,30);rows.push([subj,us(p.date),t12(p.time),us(ed),t12(et),"False",desc,net,pr,net,fmt,st])}
   else rows.push([subj,us(p.date),"",us(p.date),"","True",desc,net,pr,net,fmt,st])}
  for(const s of DATA.stories.filter(visible)){const pr=proj(s.project).name;
-  rows.push([`[${pr}] Story — ${s.text}`,us(s.date),"",us(s.date),"","True",[s.text,mus(s.music)].filter(Boolean).join("\n\n"),"Instagram",pr,"Instagram","story",""])}
+  rows.push([`[${pr}] Story — ${s.text}`,us(s.date),"",us(s.date),"","True",[s.text,mus(s.music),"Agenda : "+AGENDA_URL].filter(Boolean).join("\n\n"),"Instagram",pr,"Instagram","story",""])}
  const key=r=>{const [m,d,y]=r[1].split("/");return y+m+d+(r[2]?"1"+r[2].padStart(8,"0"):"0")};
  rows.splice(1,rows.length-1,...rows.slice(1).sort((a,b)=>key(a).localeCompare(key(b))));
  const csv="\ufeff"+rows.map(r=>r.map(q).join(",")).join("\r\n");
@@ -213,6 +215,32 @@ function exportCSV(){
  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
  toast(`${rows.length-1} lignes exportées`)}
 $("#csvbtn").addEventListener("click",exportCSV);
+// ---------- export .ics avec alerte (1 h avant une publication ; 9 h le jour d'une story)
+function exportICS(){
+ const e=s=>String(s??"").replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n");
+ const fold=l=>{const o=[];let s=l;while(s.length>72){o.push(s.slice(0,72));s=" "+s.slice(72)}o.push(s);return o.join("\r\n")};
+ const d8=s=>s.replace(/-/g,"");const nextDay=s=>{const x=pd(s);x.setDate(x.getDate()+1);return d8(iso(x))};
+ const hm=(t,add=0)=>{let [h,m]=t.split(":").map(Number);m+=add;h+=Math.floor(m/60);m%=60;return String(h).padStart(2,"0")+String(m).padStart(2,"0")+"00"};
+ const mus=m=>m&&m.pick?"Musique : "+m.pick.map(([a,b])=>a+" · "+b).join(" / "):"";
+ const now=new Date().toISOString().replace(/[-:]/g,"").slice(0,15)+"Z";
+ const L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//agenda-miguel//FR","CALSCALE:GREGORIAN","X-WR-CALNAME:Agenda des publications","X-WR-TIMEZONE:Europe/Paris",
+  "BEGIN:VTIMEZONE","TZID:Europe/Paris","BEGIN:DAYLIGHT","TZOFFSETFROM:+0100","TZOFFSETTO:+0200","TZNAME:CEST","DTSTART:19700329T020000","RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU","END:DAYLIGHT","BEGIN:STANDARD","TZOFFSETFROM:+0200","TZOFFSETTO:+0100","TZNAME:CET","DTSTART:19701025T030000","RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU","END:STANDARD","END:VTIMEZONE"];
+ const ev=(uid,summary,start,end,desc,alarm)=>{L.push("BEGIN:VEVENT","UID:"+uid+"@agenda-miguel","DTSTAMP:"+now,...start,...end,fold("SUMMARY:"+e(summary)),fold("DESCRIPTION:"+e(desc)),"URL:"+AGENDA_URL,
+  "BEGIN:VALARM","ACTION:DISPLAY",fold("DESCRIPTION:"+e(summary)),"TRIGGER:"+alarm,"END:VALARM","END:VEVENT")};
+ for(const p of DATA.posts.filter(visible)){const pr=proj(p.project).name,fmt=p.format||"post",net=p.network||"";
+  const sum=`[${pr}] ${fmt.charAt(0).toUpperCase()+fmt.slice(1)}${net?" "+net:""} — ${p.title}`;
+  const desc=[p.why,mus(p.music),p.caption?(p.captionLabel||"Légende")+" :\n"+p.caption:"","Agenda : "+AGENDA_URL].filter(Boolean).join("\n\n");
+  if(p.time)ev(p.id,sum,["DTSTART;TZID=Europe/Paris:"+d8(p.date)+"T"+hm(p.time)],["DTEND;TZID=Europe/Paris:"+d8(p.date)+"T"+hm(p.time,30)],desc,"-PT1H");
+  else ev(p.id,sum,["DTSTART;VALUE=DATE:"+d8(p.date)],["DTEND;VALUE=DATE:"+nextDay(p.date)],desc,"PT9H")}
+ DATA.stories.filter(visible).forEach((s,i)=>{const pr=proj(s.project).name;
+  ev(`story-${s.project}-${s.date}-${i}`,`[${pr}] Story — ${s.text}`,["DTSTART;VALUE=DATE:"+d8(s.date)],["DTEND;VALUE=DATE:"+nextDay(s.date)],[s.text,mus(s.music),"Agenda : "+AGENDA_URL].filter(Boolean).join("\n\n"),"PT9H")});
+ L.push("END:VCALENDAR");
+ const names=ST.projects.length?ST.projects.join("-"):"tous-projets";
+ const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([L.join("\r\n")+"\r\n"],{type:"text/calendar;charset=utf-8"}));a.download=`agenda-${names}-${todayISO}.ics`;
+ document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+ toast("Agenda exporté avec les alertes")}
+$("#icsbtn").addEventListener("click",exportICS);
+
 
 (async()=>{const k=LS.get("agenda.key",null);if(!k)return;try{KEY=await crypto.subtle.importKey("raw",b64(k),{name:"AES-GCM"},true,["decrypt"]);DATA=await loadData();$("#lock").hidden=true;$("#app").hidden=false;render()}catch(e){LS.del("agenda.key");KEY=null}})();
 

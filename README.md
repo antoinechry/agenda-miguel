@@ -36,8 +36,8 @@ Le site se met à jour une à deux minutes après le `git push`.
 
 | id | Projet | Couleur |
 | --- | --- | --- |
-| `btt` | Beyond The Track | `#E07A10` (orange) |
-| `ultraride` | UltraRide | `#3B6FD8` (bleu) |
-| `sillage` | Sillage | `#2E9466` (vert) |
+| `btt` | Beyond The Track | `#B8501F` (orange rouille) |
+| `ultraride` | UltraRide | `#1F8A4C` (vert) |
+| `sillage` | Sillage | `#2E9BD6` (bleu ciel) |
 | `ultraride` | UltraRide | `#C4622D` |
 | `sillage` | Sillage | `#E0A21B` |

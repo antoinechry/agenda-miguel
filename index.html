@@ -58,6 +58,11 @@ header h1{margin:0;font-size:clamp(34px,6vw,54px);line-height:1}
 .dlabel em{font-style:normal;color:var(--accent);margin-left:8px}
 .card{background:var(--paper);border:1px solid var(--line);border-left:5px solid var(--c);border-radius:10px;display:grid;grid-template-columns:150px minmax(0,1fr);gap:20px;padding:16px;margin-bottom:10px}
 .card.done{opacity:.6}
+.strip{display:flex;gap:8px;overflow-x:auto;margin:12px 0 4px;padding-bottom:4px}
+.sl{all:unset;cursor:zoom-in;position:relative;flex:none;border-radius:4px;line-height:0}
+.sl img{height:120px;width:auto;min-width:60px;border-radius:4px;background:rgba(0,0,0,.06);box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.sl span{position:absolute;left:4px;bottom:4px;font:700 11px/1 var(--body);color:#fff;background:rgba(0,0,0,.55);padding:3px 5px;border-radius:3px}
+.sl:focus-visible{outline:2px solid var(--c);outline-offset:2px}
 .tb{all:unset;cursor:zoom-in;position:relative;display:block;border-radius:6px;align-self:start}
 .tb:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .tb img,.tb .ph{width:150px;aspect-ratio:4/5;object-fit:cover;border-radius:6px;display:block;background:var(--line);box-shadow:0 6px 18px rgba(0,0,0,.14)}
@@ -283,12 +288,14 @@ function renderAgenda(){
 
 function music(m){if(!m||!(m.pick||[]).length)return "";
  return `<div class="mus"><b>♪ Musique</b>${m.pick.map(([t,a])=>`<button type="button" class="song" data-song="${esc(t+" "+a)}" title="Copier pour chercher dans Instagram">${esc(t)} <i>· ${esc(a)}</i></button>`).join("")}${m.kw?`<span class="kw">Bibliothèque libre : « ${esc(m.kw)} »</span>`:""}</div>`}
+function strip(p){const imgs=(p.media||[]).map((m,i)=>[m,i]).filter(([m])=>m.type.startsWith("image"));if(imgs.length<2)return "";
+ return `<div class="strip" aria-label="Tous les visuels">${imgs.map(([m,i])=>`<button type="button" class="sl" data-slide="${esc(p.id)}" data-i="${i}" aria-label="Visuel ${i+1} : agrandir"><img alt="" data-media="${esc(p.id)}" data-mi="${i}"><span>${i+1}</span></button>`).join("")}</div>`}
 function card(p){const pr=proj(p.project),many=(p.media||[]).length>1,isVid=(p.media||[]).some(m=>m.type.startsWith("video"));
  const tall=p.format==="story"||p.format==="reel";
  return `<article class="card${done[p.id]?" done":""}" style="--c:${pr.color}">
  <button type="button" class="tb${tall?" tall":""}" data-open="${esc(p.id)}" aria-label="Agrandir : ${esc(p.title)}">${p.thumb?`<img alt="" data-thumb="${esc(p.id)}">`:`<span class="ph"></span>`}${many?`<span class="count">${p.media.length} slides</span>`:""}${isVid?`<span class="count">▶ vidéo</span>`:""}</button>
  <div><div class="meta"><span class="time">${esc(p.time||"")}</span><span class="tag">${esc(p.format)}</span>${p.network?`<span class="tag">${esc(p.network)}</span>`:""}<span class="ptag">${esc(pr.name)}</span></div>
- <h3>${esc(p.title)}</h3>${p.why?`<p class="why">${esc(p.why)}</p>`:""}${music(p.music)}
+ <h3>${esc(p.title)}</h3>${p.why?`<p class="why">${esc(p.why)}</p>`:""}${strip(p)}${music(p.music)}
  ${p.caption?`<details><summary>${esc(p.captionLabel||"Légende")}</summary><div class="cap">${esc(p.caption)}</div></details>`:""}
  <div class="actions">${p.canva?`<span class="hint">Visuel dans Canva</span>`:(p.media||[]).length?`<button class="btn dl" type="button" data-dl="${esc(p.id)}">${dlLabel(p)}</button>`:""}
  ${p.caption&&!p.captionLabel?`<button class="btn" type="button" data-copy="${esc(p.id)}">Copier la légende</button>`:""}
@@ -296,6 +303,8 @@ function card(p){const pr=proj(p.project),many=(p.media||[]).length>1,isVid=(p.m
 
 function loadThumbs(){const io=new IntersectionObserver(es=>es.forEach(async e=>{if(!e.isIntersecting)return;io.unobserve(e.target);const p=DATA.posts.find(x=>x.id===e.target.dataset.thumb);try{e.target.src=await mediaURL(p.thumb)}catch(err){}}),{rootMargin:"300px"});
  document.querySelectorAll("img[data-thumb]").forEach(i=>io.observe(i));
+ const io3=new IntersectionObserver(es=>es.forEach(async e=>{if(!e.isIntersecting)return;io3.unobserve(e.target);const p=DATA.posts.find(x=>x.id===e.target.dataset.media);try{e.target.src=await mediaURL(p.media[+e.target.dataset.mi])}catch(err){}}),{rootMargin:"300px"});
+ document.querySelectorAll("img[data-media]").forEach(i=>io3.observe(i));
  if(PHOTOS){const io2=new IntersectionObserver(es=>es.forEach(e=>{if(!e.isIntersecting)return;io2.unobserve(e.target);const p=DATA.posts.find(x=>x.id===e.target.dataset.dl);prepFiles(p).catch(()=>{})}),{rootMargin:"200px"});
   document.querySelectorAll("[data-dl]").forEach(b=>io2.observe(b))}}
 
@@ -330,12 +339,13 @@ function renderMonth(){
 // ---------- interactions
 document.addEventListener("click",async e=>{const g=e.target.closest("[data-song]");if(!g)return;try{await navigator.clipboard.writeText(g.dataset.song);toast("Copié : colle-le dans la recherche musique d'Instagram")}catch(err){toast(g.dataset.song)}});
 document.addEventListener("click",async e=>{
- const t=e.target.closest("[data-proj],[data-view],[data-mon],[data-goto],[data-open],[data-dl],[data-copy]");if(!t)return;
+ const t=e.target.closest("[data-proj],[data-view],[data-mon],[data-goto],[data-open],[data-slide],[data-dl],[data-copy]");if(!t)return;
  if(t.dataset.proj!==undefined){const id=t.dataset.proj;ST.projects=!id?[]:ST.projects.includes(id)?ST.projects.filter(x=>x!==id):[...ST.projects,id];LS.set("agenda.proj",ST.projects);render()}
  else if(t.dataset.view){ST.view=t.dataset.view;render()}
  else if(t.dataset.mon){const b=ST.month?pd(ST.month+"-01"):new Date(new Date().getFullYear(),new Date().getMonth(),1);b.setMonth(b.getMonth()+Number(t.dataset.mon));ST.month=iso(b).slice(0,7);render()}
  else if(t.dataset.goto){const k=t.dataset.goto;if(k<iso(monday(new Date()))){ST.past=true;LS.set("agenda.past",true)}ST.view="agenda";render();const el=document.getElementById("d-"+k);el?el.scrollIntoView({behavior:"smooth"}):toast("Rien de prévu ce jour-là")}
  else if(t.dataset.open)lbOpen(t.dataset.open);
+ else if(t.dataset.slide)lbOpen(t.dataset.slide,+t.dataset.i);
  else if(t.dataset.copy){const p=DATA.posts.find(x=>x.id===t.dataset.copy);try{await navigator.clipboard.writeText(p.caption);toast("Légende copiée")}catch(err){const c=t.closest(".card").querySelector(".cap");c.closest("details").open=true;const r=document.createRange();r.selectNodeContents(c);getSelection().removeAllRanges();getSelection().addRange(r);toast("Texte sélectionné")}}
  else if(t.dataset.dl){const p=DATA.posts.find(x=>x.id===t.dataset.dl);
   if(PHOTOS){try{if(await shareToPhotos(t,p))return}catch(err){}}
@@ -355,7 +365,7 @@ async function lbShow(){const p=LB.p,list=p.media.length?p.media:[p.thumb],m=lis
  try{const u=await mediaURL(m);if(LB.p!==p)return;box.innerHTML="";let el;
   if(m.type.startsWith("video")){el=document.createElement("video");el.controls=true;el.autoplay=true;el.muted=true;el.playsInline=true;el.loop=true}else{el=document.createElement("img");el.alt=p.title}
   el.src=u;box.appendChild(el)}catch(e){box.innerHTML='<span class="hint">Visuel indisponible</span>'}}
-function lbOpen(id){LB.p=DATA.posts.find(x=>x.id===id);if(!LB.p||(!LB.p.media.length&&!LB.p.thumb))return;LB.i=0;LB.ret=document.activeElement;$("#lb").hidden=false;document.body.style.overflow="hidden";lbShow();$("#lb-close").focus()}
+function lbOpen(id,i=0){LB.p=DATA.posts.find(x=>x.id===id);if(!LB.p||(!LB.p.media.length&&!LB.p.thumb))return;LB.i=i;LB.ret=document.activeElement;$("#lb").hidden=false;document.body.style.overflow="hidden";lbShow();$("#lb-close").focus()}
 function lbClose(){if($("#lb").hidden)return;$("#lb").hidden=true;$("#lb-media").innerHTML="";document.body.style.overflow="";LB.p=null;LB.ret&&LB.ret.focus()}
 function lbStep(d){const n=LB.p.media.length;if(n<2)return;LB.i=(LB.i+d+n)%n;lbShow()}
 $("#lb").addEventListener("click",e=>{if(e.target.id==="lb-close"||e.target.id==="lb"||e.target.id==="lb-media")lbClose();if(e.target.id==="lb-prev")lbStep(-1);if(e.target.id==="lb-next")lbStep(1)});

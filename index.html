@@ -85,6 +85,7 @@ summary::before{content:"▸ "}details[open] summary::before{content:"▾ "}
 .stories{display:flex;flex-wrap:wrap;gap:8px}
 .story{display:flex;gap:10px;align-items:center;border:1px dashed var(--line);border-radius:8px;padding:8px 12px;font-size:14px}
 .story{flex-wrap:wrap;row-gap:4px}
+.stchk{margin-left:auto}.story.done{opacity:.6}.story.done .tag{border-color:var(--ok);color:var(--ok)}
 .stv{display:flex;gap:8px;align-items:center;width:100%;margin-top:4px}.stth{border:0;padding:0;background:none;cursor:pointer}.stth img,.stth video{height:150px;width:auto;aspect-ratio:9/16;object-fit:cover;border-radius:8px;display:block;background:var(--line)}.stl{width:100%;font-size:13px;word-break:break-all;opacity:.8}.btn.sm{padding:6px 10px;font-size:13px}
 .mus{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px;font-size:13px;color:var(--soft)}
 .story .mus{flex-basis:100%;margin:0 0 0 20px}
@@ -212,7 +213,7 @@ function exportCSV(){
   if(p.time){const [ed,et]=plus(p.date,p.time,30);rows.push([subj,us(p.date),t12(p.time),us(ed),t12(et),"False",desc,net,pr,net,fmt,st])}
   else rows.push([subj,us(p.date),"",us(p.date),"","True",desc,net,pr,net,fmt,st])}
  for(const s of DATA.stories.filter(visible)){const pr=proj(s.project).name;
-  rows.push([`[${pr}] Story — ${s.text}`,us(s.date),"",us(s.date),"","True",[s.text,mus(s.music),"Agenda : "+AGENDA_URL].filter(Boolean).join("\n\n"),"Instagram",pr,"Instagram","story",""])}
+  rows.push([`[${pr}] Story — ${s.text}`,us(s.date),"",us(s.date),"","True",[s.text,mus(s.music),"Agenda : "+AGENDA_URL].filter(Boolean).join("\n\n"),"Instagram",pr,"Instagram","story",done[skey(s)]?"Publié":"À publier"])}
  const key=r=>{const [m,d,y]=r[1].split("/");return y+m+d+(r[2]?"1"+r[2].padStart(8,"0"):"0")};
  rows.splice(1,rows.length-1,...rows.slice(1).sort((a,b)=>key(a).localeCompare(key(b))));
  const csv="\ufeff"+rows.map(r=>r.map(q).join(",")).join("\r\n");
@@ -282,13 +283,14 @@ function renderAgenda(){
    h+=`<div class="day${d===todayISO?" today":""}" id="d-${d}" data-n="${dt.getDate()}"><div class="dlabel">${DAYS[dt.getDay()]} ${dt.getDate()} ${MONTHS[dt.getMonth()]}${d===todayISO?"<em>Aujourd'hui</em>":""}</div>`;
    for(const p of posts.filter(x=>x.date===d))h+=card(p);
    const ss=stories.filter(s=>s.date===d);
-   if(ss.length)h+=`<div class="stories">${ss.map(s=>`<div class="story" style="--c:${proj(s.project).color}"><span class="dot"></span><span class="tag">Story</span>${esc(s.text)}${s.link?`<span class="stl">🔗 ${esc(s.link)}</span>`:""}${music(s.music)}${stMedia(s)}</div>`).join("")}</div>`;
+   if(ss.length)h+=`<div class="stories">${ss.map(s=>`<div class="story${done[skey(s)]?" done":""}" style="--c:${proj(s.project).color}"><span class="dot"></span><span class="tag">Story</span>${esc(s.text)}${s.link?`<span class="stl">🔗 ${esc(s.link)}</span>`:""}${music(s.music)}${stMedia(s)}<label class="chk stchk"><input type="checkbox" data-done="${esc(skey(s))}" ${done[skey(s)]?"checked":""}> Publié</label></div>`).join("")}</div>`;
    h+=`</div>`}
   h+=`</div></section>`}
  $("#main").innerHTML=h;loadThumbs()}
 
 function music(m){if(!m||!(m.pick||[]).length)return "";
  return `<div class="mus"><b>♪ Musique</b>${m.pick.map(([t,a])=>`<button type="button" class="song" data-song="${esc(t+" "+a)}" title="Copier pour chercher dans Instagram">${esc(t)} <i>· ${esc(a)}</i></button>`).join("")}${m.kw?`<span class="kw">Bibliothèque libre : « ${esc(m.kw)} »</span>`:""}</div>`}
+const skey=s=>s.id||("st:"+s.date+":"+s.text);
 const item=id=>DATA.posts.find(x=>x.id===id)||DATA.stories.find(x=>x.id===id);
 function stMedia(s){if(!s.id||!(s.media||[]).length)return "";return `<span class="stv"><button type="button" class="stth" data-slide="${esc(s.id)}" data-i="0" aria-label="Voir le visuel de la story">${s.media[0].type.startsWith("video")?`<video muted playsinline preload="metadata" onloadedmetadata="this.currentTime=2" data-media="${esc(s.id)}" data-mi="0"></video>`:`<img alt="" data-media="${esc(s.id)}" data-mi="0">`}</button><button type="button" class="btn sm" data-sdl="${esc(s.id)}">${dlLabel(s)}</button>${s.link?`<button type="button" class="btn sm" data-slink="${esc(s.id)}">Copier le lien</button>`:""}</span>`}
 function strip(p){const imgs=(p.media||[]).map((m,i)=>[m,i]).filter(([m])=>m.type.startsWith("image"));if(imgs.length<2)return "";

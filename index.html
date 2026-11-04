@@ -85,7 +85,7 @@ summary::before{content:"▸ "}details[open] summary::before{content:"▾ "}
 .stories{display:flex;flex-wrap:wrap;gap:8px}
 .story{display:flex;gap:10px;align-items:center;border:1px dashed var(--line);border-radius:8px;padding:8px 12px;font-size:14px}
 .story{flex-wrap:wrap;row-gap:4px}
-.stv{display:flex;gap:8px;align-items:center;width:100%;margin-top:4px}.stth{border:0;padding:0;background:none;cursor:pointer}.stth img{height:150px;width:auto;aspect-ratio:9/16;object-fit:cover;border-radius:8px;display:block;background:var(--line)}.stl{width:100%;font-size:13px;word-break:break-all;opacity:.8}.btn.sm{padding:6px 10px;font-size:13px}
+.stv{display:flex;gap:8px;align-items:center;width:100%;margin-top:4px}.stth{border:0;padding:0;background:none;cursor:pointer}.stth img,.stth video{height:150px;width:auto;aspect-ratio:9/16;object-fit:cover;border-radius:8px;display:block;background:var(--line)}.stl{width:100%;font-size:13px;word-break:break-all;opacity:.8}.btn.sm{padding:6px 10px;font-size:13px}
 .mus{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px;font-size:13px;color:var(--soft)}
 .story .mus{flex-basis:100%;margin:0 0 0 20px}
 .mus b{font:600 12px var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--soft)}
@@ -290,7 +290,7 @@ function renderAgenda(){
 function music(m){if(!m||!(m.pick||[]).length)return "";
  return `<div class="mus"><b>♪ Musique</b>${m.pick.map(([t,a])=>`<button type="button" class="song" data-song="${esc(t+" "+a)}" title="Copier pour chercher dans Instagram">${esc(t)} <i>· ${esc(a)}</i></button>`).join("")}${m.kw?`<span class="kw">Bibliothèque libre : « ${esc(m.kw)} »</span>`:""}</div>`}
 const item=id=>DATA.posts.find(x=>x.id===id)||DATA.stories.find(x=>x.id===id);
-function stMedia(s){if(!s.id||!(s.media||[]).length)return "";return `<span class="stv"><button type="button" class="stth" data-slide="${esc(s.id)}" data-i="0" aria-label="Voir le visuel de la story"><img alt="" data-media="${esc(s.id)}" data-mi="0"></button><button type="button" class="btn sm" data-sdl="${esc(s.id)}">Télécharger</button>${s.link?`<button type="button" class="btn sm" data-slink="${esc(s.id)}">Copier le lien</button>`:""}</span>`}
+function stMedia(s){if(!s.id||!(s.media||[]).length)return "";return `<span class="stv"><button type="button" class="stth" data-slide="${esc(s.id)}" data-i="0" aria-label="Voir le visuel de la story">${s.media[0].type.startsWith("video")?`<video muted playsinline preload="metadata" onloadedmetadata="this.currentTime=2" data-media="${esc(s.id)}" data-mi="0"></video>`:`<img alt="" data-media="${esc(s.id)}" data-mi="0">`}</button><button type="button" class="btn sm" data-sdl="${esc(s.id)}">Télécharger</button>${s.link?`<button type="button" class="btn sm" data-slink="${esc(s.id)}">Copier le lien</button>`:""}</span>`}
 function strip(p){const imgs=(p.media||[]).map((m,i)=>[m,i]).filter(([m])=>m.type.startsWith("image"));if(imgs.length<2)return "";
  return `<div class="strip" aria-label="Tous les visuels">${imgs.map(([m,i])=>`<button type="button" class="sl" data-slide="${esc(p.id)}" data-i="${i}" aria-label="Visuel ${i+1} : agrandir"><img alt="" data-media="${esc(p.id)}" data-mi="${i}"><span>${i+1}</span></button>`).join("")}</div>`}
 function card(p){const pr=proj(p.project),many=(p.media||[]).length>1,isVid=(p.media||[]).some(m=>m.type.startsWith("video"));
@@ -307,7 +307,7 @@ function card(p){const pr=proj(p.project),many=(p.media||[]).length>1,isVid=(p.m
 function loadThumbs(){const io=new IntersectionObserver(es=>es.forEach(async e=>{if(!e.isIntersecting)return;io.unobserve(e.target);const p=DATA.posts.find(x=>x.id===e.target.dataset.thumb);try{e.target.src=await mediaURL(p.thumb)}catch(err){}}),{rootMargin:"300px"});
  document.querySelectorAll("img[data-thumb]").forEach(i=>io.observe(i));
  const io3=new IntersectionObserver(es=>es.forEach(async e=>{if(!e.isIntersecting)return;io3.unobserve(e.target);const p=item(e.target.dataset.media);try{e.target.src=await mediaURL(p.media[+e.target.dataset.mi])}catch(err){}}),{rootMargin:"300px"});
- document.querySelectorAll("img[data-media]").forEach(i=>io3.observe(i));
+ document.querySelectorAll("[data-media]").forEach(i=>io3.observe(i));
  if(PHOTOS){const io2=new IntersectionObserver(es=>es.forEach(e=>{if(!e.isIntersecting)return;io2.unobserve(e.target);const p=DATA.posts.find(x=>x.id===e.target.dataset.dl);prepFiles(p).catch(()=>{})}),{rootMargin:"200px"});
   document.querySelectorAll("[data-dl]").forEach(b=>io2.observe(b))}}
 

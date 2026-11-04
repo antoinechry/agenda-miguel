@@ -283,7 +283,7 @@ function renderAgenda(){
    h+=`<div class="day${d===todayISO?" today":""}" id="d-${d}" data-n="${dt.getDate()}"><div class="dlabel">${DAYS[dt.getDay()]} ${dt.getDate()} ${MONTHS[dt.getMonth()]}${d===todayISO?"<em>Aujourd'hui</em>":""}</div>`;
    for(const p of posts.filter(x=>x.date===d))h+=card(p);
    const ss=stories.filter(s=>s.date===d);
-   if(ss.length)h+=`<div class="stories">${ss.map(s=>`<div class="story${done[skey(s)]?" done":""}" style="--c:${proj(s.project).color}"><span class="dot"></span><span class="tag">Story</span>${esc(s.text)}${s.link?`<span class="stl">🔗 ${esc(s.link)}</span>`:""}${music(s.music)}${stMedia(s)}<label class="chk stchk"><input type="checkbox" data-done="${esc(skey(s))}" ${done[skey(s)]?"checked":""}> Publié</label></div>`).join("")}</div>`;
+   if(ss.length)h+=`<div class="stories">${ss.map(s=>`<div class="story${done[skey(s)]?" done":""}" style="--c:${proj(s.project).color}"><span class="dot"></span><span class="tag">Story</span>${esc(s.text)}${slinks(s).map(l=>`<span class="stl">🔗 ${l.label?esc(l.label)+" : ":""}${esc(l.url)}</span>`).join("")}${music(s.music)}${stMedia(s)}<label class="chk stchk"><input type="checkbox" data-done="${esc(skey(s))}" ${done[skey(s)]?"checked":""}> Publié</label></div>`).join("")}</div>`;
    h+=`</div>`}
   h+=`</div></section>`}
  $("#main").innerHTML=h;loadThumbs()}
@@ -291,8 +291,9 @@ function renderAgenda(){
 function music(m){if(!m||!(m.pick||[]).length)return "";
  return `<div class="mus"><b>♪ Musique</b>${m.pick.map(([t,a])=>`<button type="button" class="song" data-song="${esc(t+" "+a)}" title="Copier pour chercher dans Instagram">${esc(t)} <i>· ${esc(a)}</i></button>`).join("")}${m.kw?`<span class="kw">Bibliothèque libre : « ${esc(m.kw)} »</span>`:""}</div>`}
 const skey=s=>s.id||("st:"+s.date+":"+s.text);
+const slinks=s=>s.links||(s.link?[{label:"",url:s.link}]:[]);
 const item=id=>DATA.posts.find(x=>x.id===id)||DATA.stories.find(x=>x.id===id);
-function stMedia(s){if(!s.id||!(s.media||[]).length)return "";return `<span class="stv"><button type="button" class="stth" data-slide="${esc(s.id)}" data-i="0" aria-label="Voir le visuel de la story">${s.media[0].type.startsWith("video")?`<video muted playsinline preload="metadata" onloadedmetadata="this.currentTime=2" data-media="${esc(s.id)}" data-mi="0"></video>`:`<img alt="" data-media="${esc(s.id)}" data-mi="0">`}</button><button type="button" class="btn sm" data-sdl="${esc(s.id)}">${dlLabel(s)}</button>${s.link?`<button type="button" class="btn sm" data-slink="${esc(s.id)}">Copier le lien</button>`:""}</span>`}
+function stMedia(s){if(!s.id||!(s.media||[]).length)return "";return `<span class="stv"><button type="button" class="stth" data-slide="${esc(s.id)}" data-i="0" aria-label="Voir le visuel de la story">${s.media[0].type.startsWith("video")?`<video muted playsinline preload="metadata" onloadedmetadata="this.currentTime=2" data-media="${esc(s.id)}" data-mi="0"></video>`:`<img alt="" data-media="${esc(s.id)}" data-mi="0">`}</button><button type="button" class="btn sm" data-sdl="${esc(s.id)}">${dlLabel(s)}</button>${slinks(s).map((l,j)=>`<button type="button" class="btn sm" data-slink="${esc(s.id)}" data-j="${j}">Copier le lien${l.label?" "+esc(l.label):""}</button>`).join("")}</span>`}
 function strip(p){const imgs=(p.media||[]).map((m,i)=>[m,i]).filter(([m])=>m.type.startsWith("image"));if(imgs.length<2)return "";
  return `<div class="strip" aria-label="Tous les visuels">${imgs.map(([m,i])=>`<button type="button" class="sl" data-slide="${esc(p.id)}" data-i="${i}" aria-label="Visuel ${i+1} : agrandir"><img alt="" data-media="${esc(p.id)}" data-mi="${i}"><span>${i+1}</span></button>`).join("")}</div>`}
 function card(p){const pr=proj(p.project),many=(p.media||[]).length>1,isVid=(p.media||[]).some(m=>m.type.startsWith("video"));
@@ -345,7 +346,7 @@ function renderMonth(){
 document.addEventListener("click",async e=>{const g=e.target.closest("[data-song]");if(!g)return;try{await navigator.clipboard.writeText(g.dataset.song);toast("Copié : colle-le dans la recherche musique d'Instagram")}catch(err){toast(g.dataset.song)}});
 document.addEventListener("click",async e=>{
  const t=e.target.closest("[data-proj],[data-view],[data-mon],[data-goto],[data-open],[data-slide],[data-dl],[data-copy],[data-sdl],[data-slink]");if(!t)return;
- if(t.dataset.slink){const s=item(t.dataset.slink);try{await navigator.clipboard.writeText(s.link);toast("Lien copié : colle-le dans le sticker Lien")}catch(err){toast(s.link)}return}
+ if(t.dataset.slink){const s=item(t.dataset.slink),u=slinks(s)[+(t.dataset.j||0)].url;try{await navigator.clipboard.writeText(u);toast("Lien copié : colle-le dans le sticker Lien")}catch(err){toast(u)}return}
  if(t.dataset.sdl){const st=item(t.dataset.sdl),m=st.media[0];if(PHOTOS&&await shareToPhotos(t,st))return;try{const u=await mediaURL(m);const a=document.createElement("a");a.href=u;a.download=m.name;document.body.appendChild(a);a.click();a.remove()}catch(err){toast("Téléchargement impossible")}return}
  if(t.dataset.proj!==undefined){const id=t.dataset.proj;ST.projects=!id?[]:ST.projects.includes(id)?ST.projects.filter(x=>x!==id):[...ST.projects,id];LS.set("agenda.proj",ST.projects);render()}
  else if(t.dataset.view){ST.view=t.dataset.view;render()}

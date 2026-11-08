@@ -34,6 +34,10 @@ Format d'un post (JSON) — les chemins "media" pointent vers des fichiers locau
   "music": {"pick": [["A Moment Apart", "ODESZA"], ["Outro", "M83"]],   # 2 morceaux à chercher dans Instagram
             "kw": "epic cinematic"}              # mot-clé de repli (bibliothèque libre de droits)
 }
+Visuels pour l'agenda en direct (app Coach Miguel, Supabase) : le texte est écrit dans Supabase, seuls les visuels passent par ce dépôt.
+  python3 tools/agenda.py media slide1.png slide2.png [--thumb vignette.jpg]
+    chiffre les fichiers dans media/ (à committer et pousser) et affiche en JSON {"media": [...], "thumb": {...}}
+    à copier dans le champ data de la ligne agenda_items. Ne modifie pas data.enc.
 Stories : add-story ... --music '{"pick":[["Titre","Artiste"]],"kw":"…"}'
 Musique en lot sur l'existant : python3 tools/agenda.py music musique.json
 """
@@ -126,6 +130,14 @@ def cmd_add(files):
         print("✓", post["date"], post.get("time", ""), post["title"])
     save(d)
 
+def cmd_media(files, thumb=None):
+    if not files: sys.exit("Aucun fichier.")
+    media = [put_media(f) for f in files]
+    first_img = next((f for f in files if not f.lower().endswith((".mp4", ".mov", ".webm"))), None)
+    src = thumb or first_img
+    th = make_thumb(src) if src else video_thumb(files[0])
+    print(json.dumps({"media": media, "thumb": th}, ensure_ascii=False))
+
 def main():
     ap = argparse.ArgumentParser(); sp = ap.add_subparsers(dest="c", required=True)
     sp.add_parser("list"); sp.add_parser("export")
@@ -133,9 +145,11 @@ def main():
     r = sp.add_parser("remove"); r.add_argument("id")
     pr = sp.add_parser("add-project"); pr.add_argument("--id", required=True); pr.add_argument("--name", required=True); pr.add_argument("--color", required=True)
     st = sp.add_parser("add-story"); st.add_argument("--project", required=True); st.add_argument("--date", required=True); st.add_argument("--text", required=True); st.add_argument("--music", help='JSON : {"pick":[["Titre","Artiste"],...],"kw":"mot-clé"}')
+    me = sp.add_parser("media"); me.add_argument("files", nargs="+"); me.add_argument("--thumb")
     mu = sp.add_parser("music"); mu.add_argument("file", help='JSON : {"posts":{id: music}, "stories":[{"project","date","text","music"}]} (text = début du texte)')
     o = ap.parse_args()
     if o.c == "add": cmd_add(o.files)
+    elif o.c == "media": cmd_media(o.files, o.thumb)
     elif o.c == "list":
         d = load()
         print("Projets :", ", ".join(f"{p['id']} ({p['name']})" for p in d["projects"]) or "aucun")
